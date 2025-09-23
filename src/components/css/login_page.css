@@ -1,0 +1,21 @@
+.login-page{
+    background-color: #89afe7;
+    background-image: url('../asserts/bckgrnd/login3.png');
+    background-size: cover;
+    background-position: center;
+    opacity: calc(0.95);
+}
+
+.login-page .card {
+    border-radius: 15px;
+    border: 2px solid #0051ff4d;
+    background: rgba(255, 255, 255, 0.479);
+}
+.login-page .heading-primary {
+    color: rgb(3, 53, 190);
+    font-size: 2.5rem;
+}
+.text-muted-small {
+    font-size: 1rem;
+    color: #6c757d;
+}
