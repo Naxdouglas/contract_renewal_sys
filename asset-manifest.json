@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/contract_renewal_sys/static/css/main.d7133e8c.css",
-    "main.js": "/contract_renewal_sys/static/js/main.649fd35b.js",
-    "static/js/453.670e15c7.chunk.js": "/contract_renewal_sys/static/js/453.670e15c7.chunk.js",
+    "main.css": "/contract_renewal_sys/static/css/main.97e2a5ed.css",
+    "main.js": "/contract_renewal_sys/static/js/main.43c25640.js",
+    "static/js/845.644be635.chunk.js": "/contract_renewal_sys/static/js/845.644be635.chunk.js",
     "static/media/login3.png": "/contract_renewal_sys/static/media/login3.d02851c37825b2d70741.png",
     "index.html": "/contract_renewal_sys/index.html",
     "static/media/good.svg": "/contract_renewal_sys/static/media/good.7df7c47345e27e12bada8b6b17900cfe.svg",
-    "main.d7133e8c.css.map": "/contract_renewal_sys/static/css/main.d7133e8c.css.map",
-    "main.649fd35b.js.map": "/contract_renewal_sys/static/js/main.649fd35b.js.map",
-    "453.670e15c7.chunk.js.map": "/contract_renewal_sys/static/js/453.670e15c7.chunk.js.map"
+    "main.97e2a5ed.css.map": "/contract_renewal_sys/static/css/main.97e2a5ed.css.map",
+    "main.43c25640.js.map": "/contract_renewal_sys/static/js/main.43c25640.js.map",
+    "845.644be635.chunk.js.map": "/contract_renewal_sys/static/js/845.644be635.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d7133e8c.css",
-    "static/js/main.649fd35b.js"
+    "static/css/main.97e2a5ed.css",
+    "static/js/main.43c25640.js"
   ]
 }
