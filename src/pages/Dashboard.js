@@ -6,40 +6,28 @@ const Dashboard = () => {
   const [activeRole, setActiveRole] = useState("HR"); // HR, Manager, Approver, Admin
   const [activeSection, setActiveSection] = useState("home");
 
-  // Mock Data
-  const [officers, setOfficers] = useState([
-    { id: 1, name: "Jane Smith", position: "Analyst", contract: "2025-12-31", hrSubmitted: false, managerRecommendation: "", approverDecision: "" },
-    { id: 2, name: "John Doe", position: "Manager", contract: "2024-06-30", hrSubmitted: false, managerRecommendation: "", approverDecision: "" },
-  ]);
-
-  const [users, setUsers] = useState([
-    { id: 1, name: "Jane Smith", role: "HR", email: "jane@dwu.ac.pg" },
-    { id: 2, name: "John Doe", role: "Manager", email: "john@dwu.ac.pg" },
-  ]);
-
-  const [tickets, setTickets] = useState([
-    { id: 1, user: "Jane Smith", issue: "Cannot upload contract document", status: "Open" },
-    { id: 2, user: "John Doe", issue: "Login problem", status: "Open" },
-  ]);
+  // State for dynamic data (replace with real API calls)
+  const [officers, setOfficers] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [tickets, setTickets] = useState([]);
 
   // Actions
   const submitHRRequest = (id) => {
-    setOfficers(officers.map(o => o.id === id ? { ...o, hrSubmitted: true } : o));
+    setOfficers(prev => prev.map(o => o.id === id ? { ...o, hrSubmitted: true } : o));
   };
 
   const addManagerRecommendation = (id, rec) => {
-    setOfficers(officers.map(o => o.id === id ? { ...o, managerRecommendation: rec } : o));
+    setOfficers(prev => prev.map(o => o.id === id ? { ...o, managerRecommendation: rec } : o));
   };
 
   const approverDecision = (id, decision) => {
-    setOfficers(officers.map(o => o.id === id ? { ...o, approverDecision: decision } : o));
+    setOfficers(prev => prev.map(o => o.id === id ? { ...o, approverDecision: decision } : o));
   };
 
   const closeTicket = (id) => {
-    setTickets(tickets.map(t => t.id === id ? { ...t, status: "Closed" } : t));
+    setTickets(prev => prev.map(t => t.id === id ? { ...t, status: "Closed" } : t));
   };
 
-  // Sidebar Options
   const sidebarOptions = {
     HR: ["Home", "Officers Requests"],
     Manager: ["Home", "Staff Requests", "Performance Evaluation"],
@@ -53,7 +41,7 @@ const Dashboard = () => {
       <nav className="sidebar">
         <h4>{activeRole} Dashboard</h4>
         <ul className="nav flex-column text-center">
-          {sidebarOptions[activeRole].map(opt => (
+          {sidebarOptions[activeRole].map((opt) => (
             <li key={opt} className="nav-item">
               <button
                 className="btn btn-custom-outline"
@@ -71,7 +59,14 @@ const Dashboard = () => {
         <hr />
         <div className="text-center mt-2">
           <label>Switch Role:</label>
-          <select className="form-select" value={activeRole} onChange={(e) => { setActiveRole(e.target.value); setActiveSection("home"); }}>
+          <select
+            className="form-select"
+            value={activeRole}
+            onChange={(e) => {
+              setActiveRole(e.target.value);
+              setActiveSection("home");
+            }}
+          >
             <option value="HR">HR</option>
             <option value="Manager">Manager</option>
             <option value="Approver">Approver</option>
@@ -82,19 +77,46 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Home */}
         {activeSection === "home" && (
           <div>
             <h1 className="heading-primary text-center mb-4">Welcome to {activeRole} Dashboard</h1>
             <div className="row text-center mt-4">
               {activeRole === "HR" && (
-                <div className="col-md-6"><div className="card shadow-lg border-0"><div className="card-body"><h5>Total Officers</h5><p className="display-4">{officers.length}</p></div></div></div>
+                <div className="col-md-6">
+                  <div className="card shadow-lg border-0">
+                    <div className="card-body">
+                      <h5>Total Officers</h5>
+                      <p className="display-4">{officers.length}</p>
+                    </div>
+                  </div>
+                </div>
               )}
               {activeRole === "Admin" && (
                 <>
-                  <div className="col-md-4"><div className="card shadow-lg border-0"><div className="card-body"><h5>Total Users</h5><p className="display-4">{users.length}</p></div></div></div>
-                  <div className="col-md-4"><div className="card shadow-lg border-0"><div className="card-body"><h5>Open Tickets</h5><p className="display-4">{tickets.filter(t=>t.status==="Open").length}</p></div></div></div>
-                  <div className="col-md-4"><div className="card shadow-lg border-0"><div className="card-body"><h5>Closed Tickets</h5><p className="display-4">{tickets.filter(t=>t.status==="Closed").length}</p></div></div></div>
+                  <div className="col-md-4">
+                    <div className="card shadow-lg border-0">
+                      <div className="card-body">
+                        <h5>Total Users</h5>
+                        <p className="display-4">{users.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="card shadow-lg border-0">
+                      <div className="card-body">
+                        <h5>Open Tickets</h5>
+                        <p className="display-4">{tickets.filter(t => t.status === "Open").length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="card shadow-lg border-0">
+                      <div className="card-body">
+                        <h5>Closed Tickets</h5>
+                        <p className="display-4">{tickets.filter(t => t.status === "Closed").length}</p>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -106,10 +128,14 @@ const Dashboard = () => {
           <div>
             <h2 className="heading-secondary text-center mb-4">Submit Contract Renewal Requests</h2>
             <ul className="list-group">
-              {officers.map(o => (
+              {officers.map((o) => (
                 <li key={o.id} className="list-group-item d-flex justify-content-between align-items-center">
                   {o.name} ({o.position})
-                  <button className="btn btn-primary btn-sm" disabled={o.hrSubmitted} onClick={()=>submitHRRequest(o.id)}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={o.hrSubmitted}
+                    onClick={() => submitHRRequest(o.id)}
+                  >
                     {o.hrSubmitted ? "Submitted" : "Submit Request"}
                   </button>
                 </li>
@@ -123,14 +149,28 @@ const Dashboard = () => {
           <div>
             <h2 className="heading-secondary text-center mb-4">Staff Renewal Requests</h2>
             <ul className="list-group">
-              {officers.filter(o=>o.hrSubmitted).map(o=>(
+              {officers.filter((o) => o.hrSubmitted).map((o) => (
                 <li key={o.id} className="list-group-item d-flex justify-content-between align-items-center">
                   {o.name} ({o.position})
                   <div>
-                    <button className="btn btn-success btn-sm me-2" onClick={()=>addManagerRecommendation(o.id,"Renew")}>Recommend Renew</button>
-                    <button className="btn btn-danger btn-sm" onClick={()=>addManagerRecommendation(o.id,"Do Not Renew")}>Do Not Renew</button>
+                    <button
+                      className="btn btn-success btn-sm me-2"
+                      onClick={() => addManagerRecommendation(o.id, "Renew")}
+                    >
+                      Recommend Renew
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => addManagerRecommendation(o.id, "Do Not Renew")}
+                    >
+                      Do Not Renew
+                    </button>
                   </div>
-                  <span className="ms-2">{o.managerRecommendation && <strong>Recommendation: {o.managerRecommendation}</strong>}</span>
+                  {o.managerRecommendation && (
+                    <div className="mt-2">
+                      <strong>Recommendation:</strong> {o.managerRecommendation}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -142,14 +182,22 @@ const Dashboard = () => {
           <div>
             <h2 className="heading-secondary text-center mb-4">Pending Requests from Managers</h2>
             <ul className="list-group">
-              {officers.filter(o=>o.managerRecommendation).map(o=>(
+              {officers.filter((o) => o.managerRecommendation).map((o) => (
                 <li key={o.id} className="list-group-item d-flex justify-content-between align-items-center">
                   {o.name} ({o.position}) - Manager Recommendation: {o.managerRecommendation}
                   <div>
-                    <button className="btn btn-success btn-sm me-2" onClick={()=>approverDecision(o.id,"Approved")}>Approve</button>
-                    <button className="btn btn-danger btn-sm" onClick={()=>approverDecision(o.id,"Rejected")}>Reject</button>
+                    <button className="btn btn-success btn-sm me-2" onClick={() => approverDecision(o.id, "Approved")}>
+                      Approve
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => approverDecision(o.id, "Rejected")}>
+                      Reject
+                    </button>
                   </div>
-                  <span className="ms-2">{o.approverDecision && <strong>Decision: {o.approverDecision}</strong>}</span>
+                  {o.approverDecision && (
+                    <div className="mt-2">
+                      <strong>Decision:</strong> {o.approverDecision}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -161,16 +209,19 @@ const Dashboard = () => {
           <div>
             <h2 className="heading-secondary text-center mb-4">Support Tickets</h2>
             <ul className="list-group">
-              {tickets.map(t => (
+              {tickets.map((t) => (
                 <li key={t.id} className="list-group-item d-flex justify-content-between align-items-center">
                   {t.user}: {t.issue} (Status: {t.status})
-                  {t.status==="Open" && <button className="btn btn-success btn-sm" onClick={()=>closeTicket(t.id)}>Close Ticket</button>}
+                  {t.status === "Open" && (
+                    <button className="btn btn-success btn-sm" onClick={() => closeTicket(t.id)}>
+                      Close Ticket
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
         )}
-
       </main>
     </div>
   );

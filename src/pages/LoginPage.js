@@ -20,6 +20,7 @@ const LoginPage = () => {
     }
 
     try {
+      // Get JWT tokens
       const res = await axios.post("http://localhost:8000/api/token/", {
         username,
         password,
@@ -29,10 +30,11 @@ const LoginPage = () => {
       localStorage.setItem("access_token", res.data.access);
       localStorage.setItem("refresh_token", res.data.refresh);
 
+      // Set default Authorization header for future requests
+      axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.access}`;
+
       // Fetch user info to get role
-      const userRes = await axios.get("http://localhost:8000/api/users/me/", {
-        headers: { Authorization: `Bearer ${res.data.access}` },
-      });
+      const userRes = await axios.get("http://localhost:8000/api/users/me/");
 
       const role = userRes.data.role;
       localStorage.setItem("role", role);
@@ -44,9 +46,11 @@ const LoginPage = () => {
       else if (role === "APPROVER") navigate("/approver-dashboard");
       else navigate("/officer-dashboard");
     } catch (err) {
-      console.error(err);
-      console.log(err)
-      setError("Invalid username or password");
+      if (err.response && err.response.status === 401) {
+        setError("Invalid username or password");
+      } else {
+        setError("Login failed. Please try again.");
+      }
     }
   };
 

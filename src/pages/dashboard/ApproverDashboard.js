@@ -8,7 +8,7 @@ const ApproverDashboard = () => {
   const [noteInput, setNoteInput] = useState("");
   const [currentRequestId, setCurrentRequestId] = useState(null);
 
-  // ✅ Load requests from backend
+  // Load requests from backend
   useEffect(() => {
     const fetchRequests = async () => {
       try {
@@ -32,7 +32,7 @@ const ApproverDashboard = () => {
     fetchRequests();
   }, []);
 
-  // ✅ Handle approve/reject
+  // Handle approve/reject
   const handleDecision = async (id, decision) => {
     if (!noteInput.trim()) {
       alert("Please provide strategic notes before making a decision.");
@@ -116,37 +116,32 @@ const ApproverDashboard = () => {
         {/* Home Section */}
         {activeSection === "home" && (
           <div>
-            <h1 className="heading-primary text-center mb-4">
-              Welcome to the Contract Renewal Approver Dashboard
-            </h1>
-            <p className="text-muted-small text-center">
-              Use the sidebar to review, approve, or reject contract renewal requests.
-            </p>
+            <div className="intro-section">
+              <div className="card card-dashboard-intro p-4">
+                <h1 className="text-center mb-4 heading-primary">Welcome to the Contract Renewal Approver Dashboard</h1>
+                <p className="text-center text-muted-small">Use the sidebar to review, approve, or reject contract renewal requests.</p>
+              </div>
+            </div>
 
             {/* Quick Stats */}
             <div className="row text-center mt-4">
               <div className="col-md-4">
-                <div className="card shadow-lg border-0">
-                  <div className="card-body">
-                    <h5 className="card-title text-primary">Pending Requests</h5>
+                <div className="card card-custom">
+                    <h5 className="card-custom text-primary">Pending Requests</h5>
                     <p className="card-text display-4 text-primary">{pendingRequests.length}</p>
-                  </div>
                 </div>
               </div>
               <div className="col-md-4">
-                <div className="card shadow-lg border-0">
-                  <div className="card-body">
-                    <h5 className="card-title text-success">Approved Requests</h5>
+                <div className="card card-custom">
+                  
+                    <h5 className="card-custom text-success">Approved Requests</h5>
                     <p className="card-text display-4 text-success">{approvedRequests.length}</p>
-                  </div>
                 </div>
               </div>
               <div className="col-md-4">
-                <div className="card shadow-lg border-0">
-                  <div className="card-body">
-                    <h5 className="card-title text-danger">Rejected Requests</h5>
+                <div className="card card-custom">
+                    <h5 className="card-custom text-danger">Rejected Requests</h5>
                     <p className="card-text display-4 text-danger">{rejectedRequests.length}</p>
-                  </div>
                 </div>
               </div>
             </div>

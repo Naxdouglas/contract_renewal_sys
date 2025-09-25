@@ -73,9 +73,13 @@ const ManagerDashboard = () => {
         {/* Home Section */}
         {activeSection === "home" && (
           <div>
-            <h1 className="heading-primary text-center mb-4">Welcome to the Manager Dashboard</h1>
-            <p className="text-muted-small text-center">Use the sidebar to review, evaluate, and recommend staff contract renewals.</p>
-
+            <div className="intro-section">
+              <div className="card card-dashboard-intro p-4">
+                <h1 className="text-center mb-4 heading-primary">Welcome to the Manager Dashboard</h1>
+                <p className="text-center text-muted-small">Use the sidebar to review, evaluate, and recommend staff contract renewals.</p>
+              </div>
+            </div>
+            
             <div className="row text-center mt-4">
               <div className="col-md-6">
                 <div className="card shadow-lg border-0">

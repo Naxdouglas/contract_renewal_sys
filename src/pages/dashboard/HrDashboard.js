@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios"; 
-import "bootstrap/dist/css/bootstrap.min.css";
+import axios from "axios";
+import defaultProfile from "../../components/asserts/profile/profile.png"; // default image 
 import "../../components/css/styles.css";
+import "../../components/css/dashboard/hr_dashboard.css";
+
+axios.defaults.baseURL = 'http://localhost:8000/api/'; //backend URL
+axios.defaults.headers.common['Authorization'] = 'Bearer ${token}';
 
 const HrDashboard = () => {
   const [activeSection, setActiveSection] = useState("home");
@@ -9,30 +13,31 @@ const HrDashboard = () => {
   const [officers, setOfficers] = useState([]);
   const [terminatedOfficers, setTerminatedOfficers] = useState([]);
   const [newOfficer, setNewOfficer] = useState({
-    name: "",
-    position: "",
-    contract: "",
-    qualification: "",
-    conductReport: ""
+    first_name: "",
+    last_name: "",
+    email: "",
+    username: "",
+    role: "OFFICER",
+    phone: "",
+    contract: ""
   });
   const [reportType, setReportType] = useState("");
   const [reportData, setReportData] = useState([]);
 
-  // 🔹 Fetch officers from API
   useEffect(() => {
     fetchOfficers();
   }, []);
 
   const fetchOfficers = async () => {
     try {
-      const response = await axios.get("/api/officers/");
-      setOfficers(response.data);
+      const response = await axios.get("/api/users/?search=OFFICER");
+      const filtered = response.data.filter(user => user.role === "OFFICER");
+      setOfficers(filtered);
     } catch (error) {
       console.error("Error fetching officers:", error);
     }
   };
 
-  // 🔹 Utility: Contract Status
   const getContractStatus = (contractDateStr) => {
     const today = new Date();
     const contractDate = new Date(contractDateStr);
@@ -42,121 +47,96 @@ const HrDashboard = () => {
     return "Active";
   };
 
-  // 🔹 Add new officer (POST)
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewOfficer({ ...newOfficer, [name]: value });
   };
 
   const handleAddOfficer = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
+    try {
+      const { first_name, last_name, email, username, role, phone, contract } = newOfficer;
+      // Create user
+      const userResponse = await axios.post("users/", {
+        username,
+        first_name,
+        last_name,
+        email,
+        role,
+        phone,
+        password: "TempPass123!"
+      });
+      const officerId = userResponse.data.id;
 
-  try {
-    // Create user payload — exclude 'contract'
-    const { contract, ...userPayload } = newOfficer;
+      // Create contract
+      await axios.post("contracts/", {
+        officer_id: officerId,
+        end_date: contract,
+        title: "Employment Contract",
+        terms: "Default contract terms"
+      });
 
-    const payload = {
-      ...userPayload,
-      password: "TempPass123!" // default password
-    };
+      // Reset form
+      setNewOfficer({
+        first_name: "",
+        last_name: "",
+        email: "",
+        username: "",
+        role: "OFFICER",
+        phone: "",
+        contract: ""
+      });
+      setActiveTab("view-officers");
+      fetchOfficers();
+      alert("Officer added successfully. Default password is 'TempPass123!'");
+    } catch (error) {
+      console.error("Error adding officer:", error);
+      alert("Failed to add officer.");
+    }
+  };
 
-    // Make API call to create the user
-    const userResponse = await axios.post("/api/users/", payload);
-    const officerId = userResponse.data.id;
-
-    // Create contract for the officer
-    const contractPayload = {
-      officer_id: officerId,
-      end_date: contract,
-      title: "Employment Contract",
-      terms: "Default contract terms"
-    };
-
-    await axios.post("/api/contracts/", contractPayload);
-
-    // Reset form
-    setNewOfficer({
-      first_name: "",
-      last_name: "",
-      email: "",
-      username: "",
-      role: "OFFICER",
-      phone: "",
-      contract: ""
-    });
-    setActiveTab("view-officers");
-
-    // Refresh officers list
-    fetchOfficers();
-
-    alert("Officer added successfully. Default password is 'TempPass123!'");
-  } catch (error) {
-    console.error("Error adding officer:", error.response?.data || error.message);
-
-    // Show backend errors in alert if available
-    const message = error.response?.data
-      ? JSON.stringify(error.response.data)
-      : "Failed to add officer.";
-    alert(message);
-  }
-};
-
-
-
-  // 🔹 Renew contract (PATCH)
   const renewContract = async (officerId) => {
     const newDate = prompt("Enter new contract end date (YYYY-MM-DD):");
     if (!newDate) return;
-
     try {
-      const response = await axios.patch(`/api/officers/${officerId}/`, { contract: newDate });
-      setOfficers(officers.map(o => (o.id === officerId ? response.data : o)));
+      await axios.patch(`/api/users/${officerId}/`, { contract: newDate });
+      fetchOfficers();
     } catch (error) {
       console.error("Error renewing contract:", error);
     }
   };
 
-  // 🔹 Terminate officer (DELETE)
   const terminateOfficer = async (officerId) => {
     try {
-      await axios.delete(`/api/officers/${officerId}/`);
+      await axios.delete(`/api/users/${officerId}/`);
       const terminated = officers.find(o => o.id === officerId);
-      setTerminatedOfficers([...terminatedOfficers, terminated]);
+      setTerminatedOfficers([...terminatedOfficers, { ...terminated, status: getContractStatus(terminated.contract) }]);
       setOfficers(officers.filter(o => o.id !== officerId));
     } catch (error) {
       console.error("Error terminating officer:", error);
     }
   };
 
-  // 🔹 Toggle compliance (PATCH)
   const toggleCompliance = async (officerId, currentStatus) => {
     try {
-      const response = await axios.patch(`/api/officers/${officerId}/`, {
-        complianceStatus: !currentStatus,
-      });
-      setOfficers(officers.map(o => (o.id === officerId ? response.data : o)));
+      await axios.patch(`/api/users/${officerId}/`, { complianceStatus: !currentStatus });
+      fetchOfficers();
     } catch (error) {
-      console.error("Error updating compliance:", error);
+      console.error("Error toggling compliance:", error);
     }
   };
 
-  // 🔹 Approve renewal (PATCH)
   const approveRenewal = async (officerId) => {
     const newDate = prompt("Enter new contract end date (YYYY-MM-DD):");
     if (!newDate) return;
-
     try {
-      const response = await axios.patch(`/api/officers/${officerId}/`, {
-        contract: newDate,
-        renewalApproved: true,
-      });
-      setOfficers(officers.map(o => (o.id === officerId ? response.data : o)));
+      await axios.patch(`/api/users/${officerId}/`, { contract: newDate, renewalApproved: true });
+      fetchOfficers();
     } catch (error) {
       console.error("Error approving renewal:", error);
     }
   };
 
-  // 🔹 Generate Reports (local filtering)
   const generateReport = () => {
     const data = officers.map((o) => ({
       ...o,
@@ -171,22 +151,16 @@ const HrDashboard = () => {
     setReportData(filtered);
   };
 
-  // 🔹 Handle document upload
-const handleDocumentUpload = async (e, officerId) => {
+  const handleDocumentUpload = async (e, officerId) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append("document", file);
-
     try {
       const response = await axios.post(`/api/documents/upload/${officerId}/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       alert(`Document "${response.data.name}" uploaded successfully!`);
-
-      // Optionally, update officer documents locally
       setOfficers(officers.map(o => {
         if (o.id === officerId) {
           return {
@@ -196,99 +170,146 @@ const handleDocumentUpload = async (e, officerId) => {
         }
         return o;
       }));
-
     } catch (error) {
-      console.error("Error uploading document:", error.response?.data || error.message);
+      console.error("Error uploading document:", error);
       alert("Failed to upload document.");
     }
   };
 
-
-  // Stats
   const activeContracts = officers.filter((o) => getContractStatus(o.contract) === "Active").length;
   const pendingRenewals = officers.filter((o) => getContractStatus(o.contract) === "Expiring Soon").length;
   const renewalCases = officers.filter((o) => getContractStatus(o.contract) === "Expiring Soon");
 
   return (
-    <div className="dashboard-wrapper">
+    <div className="dashboard-wrapper" style={{ display: "flex" }}>
       {/* Sidebar */}
-      <nav className="sidebar">
-        <h4>HR Options</h4>
-        <ul className="nav flex-column text-center">
-          <li className="nav-item"><button className="btn btn-custom-outline" onClick={() => setActiveSection("home")}>Home</button></li>
-          <li className="nav-item"><button className="btn btn-custom-outline" onClick={() => { setActiveSection("officers"); setActiveTab("view-officers"); }}>Officers Management</button></li>
-          <li className="nav-item"><button className="btn btn-custom-outline" onClick={() => { setActiveSection("hr-processes"); setActiveTab("verify-documents"); }}>HR Processes</button></li>
-          <li className="nav-item"><button className="btn btn-custom-outline" onClick={() => setActiveSection("reports")}>Generate Reports</button></li>
-          <li className="nav-item"><button className="btn btn-custom-danger" onClick={() => alert("Logging out...")}>Logout</button></li>
-        </ul>
-      </nav>
+        <nav className="sidebar" style={{ width: "250px" }}>
+          <h4>HR Options</h4>
+          <div className="profile-section" onClick={() => setActiveSection("profile")}>
+            <img src={defaultProfile} alt="Profile" />
+            {/* <h5>{defaultProfile.name}</h5>
+            <p>{defaultProfile.position}</p> */}
+          </div>
 
-      <main className="main-content">
-        {/* Home Dashboard */} {activeSection === "home" && ( 
-        <div> 
-          <h1 className="text-center mb-4 heading-primary"> Welcome to the HR Dashboard </h1> 
-          <p className="text-center text-muted"> 
-            Use the sidebar to navigate through HR-specific options. 
-          </p> {/* Quick Stats */}
-            <div className="row text-center mt-4">
-            <div className="col-md-4">
-              <div className="card card-custom"> 
-                <h5 className="card-custom-title text-primary">
-                  Total Officers
-                </h5> 
-                <p className="card-text display-4 text-primary">{officers.length}</p> 
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card card-custom"> 
-                <h5 className="card-custom-title text-success">Active Contracts</h5> 
-                <p className="card-text display-4 text-success">{activeContracts}</p> 
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card card-custom"> 
-                <h5 className="card-custom-title text-warning">Pending Renewals</h5> 
-                <p className="card-text display-4 text-warning">{pendingRenewals}</p>  
-              </div>
-            </div>     
-            </div>
+          <ul className="nav flex-column text-center">
+            <li className="nav-item">
+              <button className="btn btn-custom-outline" onClick={() => setActiveSection("home")}>
+                Home
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className="btn btn-custom-outline"
+                onClick={() => {
+                  setActiveSection("officers");
+                  setActiveTab("view-officers");
+                }}
+              >
+                Officers Management
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className="btn btn-custom-outline"
+                onClick={() => {
+                  setActiveSection("hr-processes");
+                  setActiveTab("verify-documents");
+                }}
+              >
+                HR Processes
+              </button>
+            </li>
+            <li className="nav-item">
+              <button className="btn btn-custom-outline" onClick={() => { setActiveSection("reports"); setReportData([]); }}>
+                Generate Reports
+              </button>
+            </li>
+            <li className="nav-item">
+              <button className="btn btn-custom-danger" onClick={() => alert("Logging out...")}>
+                Logout
+              </button>
+            </li>
+          </ul>
+        </nav>
 
-            {/* Quick Links */} 
-            <div className="row text-center mt-5"> 
-              <div className="col-md-6"> 
-                <button className="btn btn-custom-primary w-100 shadow-sm" 
-                  onClick={() => setActiveSection("view-officers")} > 
-                  View Officers 
-                </button> 
-              </div> 
-              <div className="col-md-6"> 
-                <button className="btn btn-custom-primary w-100 shadow-sm" 
-                  onClick={() => setActiveSection("reports")} > 
-                    Generate Reports 
-                </button> 
-              </div> 
-            </div> 
-        </div> 
-      )}
+
+      {/* Main Content */}
+      <main className="main-content" style={{ flexGrow: 1 }}>
+        {/* Home Dashboard */}
+        {activeSection === "home" && (
+          <div>
+            <div className="intro-section">
+              <div className="card card-dashboard-intro p-4">
+                <h1 className="text-center mb-4 heading-primary">Welcome to the HR Dashboard</h1>
+                <p className="text-center text-muted-small">Use the sidebar to navigate through HR-specific options.</p>
+              </div>
+            </div>
+            {/* Quick Stats */}
+            <div className="row text-center mb-4">
+              <div className="col-md-4 mb-3">
+                <div className="card card-custom">
+                  <h5 className="text-primary">Total Officers</h5>
+                  <p className="display-4">{officers.length}</p>
+                </div>
+              </div>
+              <div className="col-md-4 mb-3">
+                <div className="card card-custom">
+                  <h5 className="text-success">Active Contracts</h5>
+                  <p className="display-4">{activeContracts}</p>
+                </div>
+              </div>
+              <div className="col-md-4 mb-3">
+                <div className="card card-custom">
+                  <h5 className="text-warning">Pending Renewals</h5>
+                  <p className="display-4">{pendingRenewals}</p>
+                </div>
+              </div>
+            </div>
+            {/* Quick Links */}
+            <div className="row text-center mt-5">
+              <div className="col-md-6 mb-2">
+                <button className="btn btn-custom-primary w-100 shadow-sm" onClick={() => { setActiveSection("officers"); setActiveTab("view-officers"); }}>View Officers</button>
+              </div>
+              <div className="col-md-6 mb-2">
+                <button className="btn btn-custom-primary w-100 shadow-sm" onClick={() => { setActiveSection("reports"); setReportData([]); }}>Generate Reports</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Officers Management with Tabs */}
         {activeSection === "officers" && (
           <div>
-            <h1 className="text-center mb-4">Officers Management</h1>
+            <h2 className="text-center mb-4">Officers Management</h2>
             <ul className="nav nav-tabs mb-3">
               <li className="nav-item">
-                <button className={`nav-link ${activeTab==="view-officers"?"active":""}`} onClick={()=>setActiveTab("view-officers")}>View Officers</button>
+                <button
+                  className={`nav-link ${activeTab === "view-officers" ? "active" : ""}`}
+                  onClick={() => setActiveTab("view-officers")}
+                >
+                  View Officers
+                </button>
               </li>
               <li className="nav-item">
-                <button className={`nav-link ${activeTab==="add-officer"?"active":""}`} onClick={()=>setActiveTab("add-officer")}>Add Officer</button>
+                <button
+                  className={`nav-link ${activeTab === "add-officer" ? "active" : ""}`}
+                  onClick={() => setActiveTab("add-officer")}
+                >
+                  Add Officer
+                </button>
               </li>
               <li className="nav-item">
-                <button className={`nav-link ${activeTab==="manage-contracts"?"active":""}`} onClick={()=>setActiveTab("manage-contracts")}>Manage Contracts</button>
+                <button
+                  className={`nav-link ${activeTab === "manage-contracts" ? "active" : ""}`}
+                  onClick={() => setActiveTab("manage-contracts")}
+                >
+                  Manage Contracts
+                </button>
               </li>
             </ul>
 
             {activeTab === "view-officers" && (
-              <table className="table table-striped table-bordered table-custom">
+              <table className="table table-striped table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
@@ -301,7 +322,7 @@ const handleDocumentUpload = async (e, officerId) => {
                   {officers.map((officer, index) => (
                     <tr key={officer.id}>
                       <td>{index + 1}</td>
-                      <td>{officer.name}</td>
+                      <td>{officer.first_name} {officer.last_name}</td>
                       <td>{officer.position}</td>
                       <td>{officer.contract}</td>
                     </tr>
@@ -310,64 +331,59 @@ const handleDocumentUpload = async (e, officerId) => {
               </table>
             )}
 
-            { /* --- Add Officer Tab --- */ }
             {activeTab === "add-officer" && (
-              <form onSubmit={handleAddOfficer} className="shadow p-4 rounded bg-light">
+              <form onSubmit={handleAddOfficer} className="border p-4 mb-4 bg-light rounded shadow-sm">
                 <div className="mb-3">
                   <label className="form-label">First Name</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    name="first_name" 
-                    value={newOfficer.first_name} 
-                    onChange={handleChange} 
-                    placeholder="Enter first name" 
-                    required 
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="first_name"
+                    value={newOfficer.first_name}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Last Name</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    name="last_name" 
-                    value={newOfficer.last_name} 
-                    onChange={handleChange} 
-                    placeholder="Enter last name" 
-                    required 
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="last_name"
+                    value={newOfficer.last_name}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Email</label>
-                  <input 
-                    type="email" 
-                    className="form-control" 
-                    name="email" 
-                    value={newOfficer.email} 
-                    onChange={handleChange} 
-                    placeholder="Enter email" 
-                    required 
+                  <input
+                    type="email"
+                    className="form-control"
+                    name="email"
+                    value={newOfficer.email}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Username</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    name="username" 
-                    value={newOfficer.username} 
-                    onChange={handleChange} 
-                    placeholder="Enter username" 
-                    required 
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="username"
+                    value={newOfficer.username}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Role</label>
-                  <select 
-                    className="form-select" 
-                    name="role" 
-                    value={newOfficer.role} 
-                    onChange={handleChange} 
+                  <select
+                    className="form-select"
+                    name="role"
+                    value={newOfficer.role}
+                    onChange={handleChange}
                     required
                   >
                     <option value="OFFICER">Officer</option>
@@ -379,34 +395,31 @@ const handleDocumentUpload = async (e, officerId) => {
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Phone</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    name="phone" 
-                    value={newOfficer.phone} 
-                    onChange={handleChange} 
-                    placeholder="Enter phone number" 
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="phone"
+                    value={newOfficer.phone}
+                    onChange={handleChange}
                   />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Contract End Date</label>
-                  <input 
-                    type="date" 
-                    className="form-control" 
-                    name="contract" 
-                    value={newOfficer.contract} 
-                    onChange={handleChange} 
-                    required 
+                  <input
+                    type="date"
+                    className="form-control"
+                    name="contract"
+                    value={newOfficer.contract}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
-
                 <button type="submit" className="btn btn-primary w-100">Add Officer</button>
               </form>
             )}
 
-
             {activeTab === "manage-contracts" && (
-              <table className="table table-striped table-bordered table-custom">
+              <table className="table table-striped table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
@@ -423,24 +436,42 @@ const handleDocumentUpload = async (e, officerId) => {
                     return (
                       <tr key={officer.id}>
                         <td>{index + 1}</td>
-                        <td>{officer.name}</td>
+                        <td>{officer.first_name} {officer.last_name}</td>
                         <td>{officer.position}</td>
                         <td>{officer.contract}</td>
                         <td>{status}</td>
                         <td>
-                          <button className="btn btn-sm btn-success me-2" onClick={()=>{
-                            const newDate = prompt(`Enter new contract end date for ${officer.name} (YYYY-MM-DD):`);
-                            if(newDate){
-                              setOfficers(officers.map(o=>o.id===officer.id?{...o,contract:newDate}:o))
-                            }
-                          }}>Renew</button>
-                          <button className="btn btn-sm btn-danger" onClick={()=>{
-                            setOfficers(officers.filter(o=>o.id!==officer.id));
-                            setTerminatedOfficers([...terminatedOfficers,{...officer,status}])
-                          }}>Terminate</button>
+                          <button
+                            className="btn btn-sm btn-success me-2"
+                            onClick={() => {
+                              const newDate = prompt(`Enter new contract end date for ${officer.first_name} ${officer.last_name} (YYYY-MM-DD):`);
+                              if (newDate) {
+                                axios
+                                  .patch(`/api/users/${officer.id}/`, { contract: newDate })
+                                  .then(() => fetchOfficers())
+                                  .catch(console.error);
+                              }
+                            }}
+                          >
+                            Renew
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              axios
+                                .delete(`/api/users/${officer.id}/`)
+                                .then(() => {
+                                  setOfficers(officers.filter(o => o.id !== officer.id));
+                                  setTerminatedOfficers([...terminatedOfficers, { ...officer, status }]);
+                                })
+                                .catch(console.error);
+                            }}
+                          >
+                            Terminate
+                          </button>
                         </td>
                       </tr>
-                    )
+                    );
                   })}
                 </tbody>
               </table>
@@ -448,19 +479,47 @@ const handleDocumentUpload = async (e, officerId) => {
           </div>
         )}
 
-        {/* HR Processes with Tabs */}
+        {/* HR Processes */}
         {activeSection === "hr-processes" && (
           <div>
-            <h1 className="text-center mb-4">HR Processes</h1>
+            <h2 className="text-center mb-4">HR Processes</h2>
             <ul className="nav nav-tabs mb-3">
-              <li className="nav-item"><button className={`nav-link ${activeTab==="verify-documents"?"active":""}`} onClick={()=>setActiveTab("verify-documents")}>Verify Documents</button></li>
-              <li className="nav-item"><button className={`nav-link ${activeTab==="compliance-check"?"active":""}`} onClick={()=>setActiveTab("compliance-check")}>Compliance Check</button></li>
-              <li className="nav-item"><button className={`nav-link ${activeTab==="prepare-renewals"?"active":""}`} onClick={()=>setActiveTab("prepare-renewals")}>Prepare Renewal Cases</button></li>
-              <li className="nav-item"><button className={`nav-link ${activeTab==="approve-renewals"?"active":""}`} onClick={()=>setActiveTab("approve-renewals")}>Approve / Issue Renewals</button></li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === "verify-documents" ? "active" : ""}`}
+                  onClick={() => setActiveTab("verify-documents")}
+                >
+                  Verify Documents
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === "compliance-check" ? "active" : ""}`}
+                  onClick={() => setActiveTab("compliance-check")}
+                >
+                  Compliance Check
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === "prepare-renewals" ? "active" : ""}`}
+                  onClick={() => setActiveTab("prepare-renewals")}
+                >
+                  Prepare Renewal Cases
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === "approve-renewals" ? "active" : ""}`}
+                  onClick={() => setActiveTab("approve-renewals")}
+                >
+                  Approve / Issue Renewals
+                </button>
+              </li>
             </ul>
 
-            {activeTab==="verify-documents" && (
-              <table className="table table-striped table-bordered table-custom">
+            {activeTab === "verify-documents" && (
+              <table className="table table-striped table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
@@ -470,20 +529,25 @@ const handleDocumentUpload = async (e, officerId) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {officers.map((o, idx)=>(
+                  {officers.map((o, idx) => (
                     <tr key={o.id}>
-                      <td>{idx+1}</td>
-                      <td>{o.name}</td>
-                      <td>{o.documents.length?o.documents.join(", "):"No documents"}</td>
-                      <td><input type="file" onChange={(e)=>handleDocumentUpload(e,o.id)} /></td>
+                      <td>{idx + 1}</td>
+                      <td>{o.first_name} {o.last_name}</td>
+                      <td>{o.documents && o.documents.length ? o.documents.join(", ") : "No documents"}</td>
+                      <td>
+                        <input
+                          type="file"
+                          onChange={(e) => handleDocumentUpload(e, o.id)}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
 
-            {activeTab==="compliance-check" && (
-              <table className="table table-striped table-bordered table-custom">
+            {activeTab === "compliance-check" && (
+              <table className="table table-striped table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
@@ -495,48 +559,58 @@ const handleDocumentUpload = async (e, officerId) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {officers.map((o,idx)=>(
+                  {officers.map((o, idx) => (
                     <tr key={o.id}>
-                      <td>{idx+1}</td>
-                      <td>{o.name}</td>
+                      <td>{idx + 1}</td>
+                      <td>{o.first_name} {o.last_name}</td>
                       <td>{o.qualification}</td>
                       <td>{o.conductReport}</td>
-                      <td>{o.complianceStatus?"Yes":"No"}</td>
-                      <td><button className="btn btn-sm btn-warning" onClick={()=>toggleCompliance(o.id)}>Toggle</button></td>
+                      <td>{o.complianceStatus ? "Yes" : "No"}</td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-warning"
+                          onClick={() => toggleCompliance(o.id, o.complianceStatus)}
+                        >
+                          Toggle
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
 
-            {activeTab==="prepare-renewals" && (
+            {activeTab === "prepare-renewals" && (
               <div>
-                {renewalCases.length===0? <p className="text-center">No contracts expiring soon.</p>:
-                <table className="table table-striped table-bordered table-custom">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>#</th>
-                      <th>Name</th>
-                      <th>Position</th>
-                      <th>Contract End Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {renewalCases.map((o,idx)=>(
-                      <tr key={o.id}>
-                        <td>{idx+1}</td>
-                        <td>{o.name}</td>
-                        <td>{o.position}</td>
-                        <td>{o.contract}</td>
+                {renewalCases.length === 0 ? (
+                  <p className="text-center">No contracts expiring soon.</p>
+                ) : (
+                  <table className="table table-striped table-bordered">
+                    <thead className="table-dark">
+                      <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Position</th>
+                        <th>Contract End Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>}
+                    </thead>
+                    <tbody>
+                      {renewalCases.map((o, idx) => (
+                        <tr key={o.id}>
+                          <td>{idx + 1}</td>
+                          <td>{o.first_name} {o.last_name}</td>
+                          <td>{o.position}</td>
+                          <td>{o.contract}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
 
-            {activeTab==="approve-renewals" && (
-              <table className="table table-striped table-bordered table-custom">
+            {activeTab === "approve-renewals" && (
+              <table className="table table-striped table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
@@ -547,13 +621,20 @@ const handleDocumentUpload = async (e, officerId) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {officers.map((o,idx)=>(
+                  {officers.map((o, idx) => (
                     <tr key={o.id}>
-                      <td>{idx+1}</td>
-                      <td>{o.name}</td>
+                      <td>{idx + 1}</td>
+                      <td>{o.first_name} {o.last_name}</td>
                       <td>{o.contract}</td>
-                      <td>{o.renewalApproved?"Yes":"No"}</td>
-                      <td><button className="btn btn-sm btn-success" onClick={()=>approveRenewal(o.id)}>Approve</button></td>
+                      <td>{o.renewalApproved ? "Yes" : "No"}</td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-success"
+                          onClick={() => approveRenewal(o.id)}
+                        >
+                          Approve
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -563,12 +644,16 @@ const handleDocumentUpload = async (e, officerId) => {
         )}
 
         {/* Reports */}
-        {activeSection==="reports" && (
-          <div className="container mt-4">
-            <h1 className="text-center mb-4">Generate Reports</h1>
+        {activeSection === "reports" && (
+          <div>
+            <h2 className="text-center mb-4">Generate Reports</h2>
             <div className="mb-3">
               <label className="form-label">Select Report Type</label>
-              <select className="form-select" value={reportType} onChange={(e)=>setReportType(e.target.value)}>
+              <select
+                className="form-select"
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+              >
                 <option value="">-- Choose Report --</option>
                 <option value="all">All Officers</option>
                 <option value="expiring">Expiring Contracts (Next 30 Days)</option>
@@ -576,8 +661,8 @@ const handleDocumentUpload = async (e, officerId) => {
               </select>
             </div>
             <button className="btn btn-primary mb-3" onClick={generateReport}>Generate</button>
-            {reportData.length>0 && (
-              <table className="table table-striped table-bordered table-custom">
+            {reportData.length > 0 && (
+              <table className="table table-striped table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
@@ -588,10 +673,10 @@ const handleDocumentUpload = async (e, officerId) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {reportData.map((officer,index)=>(
+                  {reportData.map((officer, index) => (
                     <tr key={officer.id}>
-                      <td>{index+1}</td>
-                      <td>{officer.name}</td>
+                      <td>{index + 1}</td>
+                      <td>{officer.first_name} {officer.last_name}</td>
                       <td>{officer.position}</td>
                       <td>{officer.contract}</td>
                       <td>{officer.status}</td>
@@ -604,7 +689,7 @@ const handleDocumentUpload = async (e, officerId) => {
         )}
       </main>
     </div>
-  )
+  );
 };
 
 export default HrDashboard;
